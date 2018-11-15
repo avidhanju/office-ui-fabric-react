@@ -8,6 +8,7 @@ import { Icon } from '../../Icon';
 import { KeytipData } from '../../KeytipData';
 import { Label, ILabelStyleProps, ILabelStyles } from '../../Label';
 import { Panel } from '../../Panel';
+import { SearchBox } from '../../SearchBox';
 import { IProcessedStyleSet } from '../../Styling';
 import {
   BaseComponent,
@@ -45,6 +46,7 @@ export interface IDropdownState {
   /** Whether the root dropdown element has focus. */
   hasFocus: boolean;
   calloutRenderEdge?: RectangleEdge;
+  filterText: string;
 }
 
 @withResponsiveMode
@@ -102,7 +104,8 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
       isOpen: false,
       selectedIndices,
       hasFocus: false,
-      calloutRenderEdge: undefined
+      calloutRenderEdge: undefined,
+      filterText: ''
     };
   }
 
@@ -460,6 +463,14 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
           aria-labelledby={id + '-label'}
           role="listbox"
         >
+          {this.props.showFilterBox ? (
+            <SearchBox
+              value={this.state.filterText}
+              placeholder={this.props.filterPlaceholderText || 'Search'}
+              underlined
+              onChange={this._onFilterChanged}
+            />
+          ) : null}
           {this.props.options.map((item: any, index: number) => onRenderItem({ ...item, index }, this._onRenderItem))}
         </FocusZone>
       </div>
@@ -477,6 +488,16 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
         return this._renderOption(item);
     }
   };
+
+  private _onFilterChanged = (filterText: string): void => {
+    this.setState({
+      filterText: !this._isNullOrWhiteSpace(filterText) ? filterText : ''
+    });
+  };
+
+  private _isNullOrWhiteSpace(value: string): boolean {
+    return !value || value.trim().length <= 0;
+  }
 
   // Render separator
   private _renderSeparator(item: IDropdownOption): JSX.Element | null {
@@ -504,9 +525,14 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
     const id = this._id;
     const isItemSelected = item.index !== undefined && selectedIndices ? selectedIndices.indexOf(item.index) > -1 : false;
 
+    const shouldShow = !this._isNullOrWhiteSpace(this.state.filterText)
+      ? item.text.toLocaleLowerCase().indexOf(this.state.filterText.toLocaleLowerCase()) > -1
+      : true;
+
     // select the right classname based on the combination of selected/disabled
-    const itemClassName =
-      isItemSelected && item.disabled === true // preciate: both selected and disabled
+    const itemClassName = !shouldShow
+      ? this._classNames.dropdownItemHidden
+      : isItemSelected && item.disabled === true // preciate: both selected and disabled
         ? this._classNames.dropdownItemSelectedAndDisabled
         : isItemSelected // preciate: selected only
           ? this._classNames.dropdownItemSelected

@@ -352,6 +352,53 @@ describe('Dropdown', () => {
       const thirdItemElement = document.querySelector('.ms-Dropdown-item[data-index="3"]') as HTMLElement;
       expect(thirdItemElement.getAttribute('title')).toEqual('3');
     });
+
+    it('Renders the filter box if option is provided', () => {
+      const container = document.createElement('div');
+      let dropdownRoot: HTMLElement | undefined;
+
+      document.body.appendChild(container);
+
+      ReactDOM.render(
+        <Dropdown label="testgroup" showFilterBox filterPlaceholderText={'Type to filter...'} options={DEFAULT_OPTIONS} />,
+        container
+      );
+      dropdownRoot = container.querySelector('.ms-Dropdown') as HTMLElement;
+
+      ReactTestUtils.Simulate.click(dropdownRoot);
+
+      const searchBox = document.querySelector('.ms-SearchBox-field') as HTMLElement;
+      expect(searchBox.getAttribute('placeholder')).toEqual('Type to filter...');
+    });
+
+    it('Filters items when filter text changes', () => {
+      const options = [
+        { key: 'Header4', text: 'Colors', itemType: DropdownMenuItemType.Header },
+        { key: 'red', text: 'Red' },
+        { key: 'green', text: 'Green' },
+        { key: 'blue', text: 'Blue' },
+        { key: 'yellow', text: 'Yellow' },
+        { key: 'divider_2', text: '-', itemType: DropdownMenuItemType.Divider },
+        { key: 'Header5', text: 'Flower', itemType: DropdownMenuItemType.Header },
+        { key: 'rose', text: 'Rose' },
+        { key: 'lily', text: 'Lily' },
+        { key: 'sunflower', text: 'Sunflower' }
+      ];
+      const dropdown = React.createRef<IDropdown>();
+      const container = document.createElement('div');
+      let dropdownRoot: HTMLElement | undefined;
+
+      document.body.appendChild(container);
+
+      ReactDOM.render(<Dropdown label="testgroup" componentRef={dropdown} options={options} />, container);
+      dropdownRoot = container.querySelector('.ms-Dropdown') as HTMLElement;
+      (dropdown.current as DropdownBase).setState({
+        filterText: 'r'
+      });
+
+      ReactTestUtils.Simulate.click(dropdownRoot);
+      expect(document.querySelectorAll('.ms-Dropdown-item-hidden')).toHaveLength(3);
+    });
   });
 
   describe('multi-select', () => {

@@ -17,7 +17,8 @@ const GlobalClassNames = {
   dropdownOptionText: 'ms-Dropdown-optionText',
   dropdownItemHeader: 'ms-Dropdown-header',
   titleIsPlaceHolder: 'ms-Dropdown-titleIsPlaceHolder',
-  titleHasError: 'ms-Dropdown-title--hasError'
+  titleHasError: 'ms-Dropdown-title--hasError',
+  dropdownItemHidden: 'ms-Dropdown-item-hidden'
 };
 
 const DROPDOWN_HEIGHT = 32;
@@ -285,6 +286,7 @@ export const getStyles: IStyleFunction<IDropdownStyleProps, IDropdownStyles> = p
         textAlign: 'left'
       }
     ],
-    subComponentStyles: { label: { root: { display: 'inline-block' } } }
+    subComponentStyles: { label: { root: { display: 'inline-block' } } },
+    dropdownItemHidden: [globalClassnames.dropdownItemHidden, { display: 'none' }]
   };
 };

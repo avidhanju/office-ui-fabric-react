@@ -99,6 +99,16 @@ export interface IDropdownProps extends ISelectableDroppableTextProps<IDropdown,
   isDisabled?: boolean;
 
   /**
+   * Optional flag for search box.
+   */
+  showFilterBox?: boolean;
+
+  /**
+   * Optional value for search box placeholder text.
+   */
+  filterPlaceholderText?: string;
+
+  /**
    * Optional keytip for this dropdown
    */
   keytipProps?: IKeytipProps;
@@ -213,6 +223,11 @@ export interface IDropdownStyles {
 
   /** Refers to the individual dropdown items that are being rendered as a header. */
   dropdownItemHeader: IStyle;
+
+  /**
+   * Style for dropdown item when it is filtered out.
+   */
+  dropdownItemHidden: IStyle;
 
   /**
    * Refers to the panel that hosts the Dropdown options in small viewports.
