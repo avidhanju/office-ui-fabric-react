@@ -240,7 +240,8 @@ export const getStyles: IStyleFunction<IDropdownStyleProps, IDropdownStyles> = p
             borderColor: 'Window'
           },
           '&:hover': {
-            color: 'inherit'
+            color: 'inherit',
+            backgroundColor: semanticColors.listItemBackgroundHovered
           },
           '&:focus': {
             backgroundColor: semanticColors.listItemBackgroundHovered

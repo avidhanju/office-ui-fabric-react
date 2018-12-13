@@ -8,7 +8,7 @@ import { Icon } from '../../Icon';
 import { KeytipData } from '../../KeytipData';
 import { Label, ILabelStyleProps, ILabelStyles } from '../../Label';
 import { Panel } from '../../Panel';
-import { SearchBox } from '../../SearchBox';
+import { SearchBox, ISearchBox } from '../../SearchBox';
 import { IProcessedStyleSet } from '../../Styling';
 import {
   BaseComponent,
@@ -58,6 +58,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
   private _host = createRef<HTMLDivElement>();
   private _focusZone = createRef<IFocusZone>();
   private _dropDown = createRef<HTMLDivElement>();
+  private _searchBox = createRef<ISearchBox>();
   private _id: string;
   private _isScrollIdle: boolean;
   private readonly _scrollIdleDelay: number = 250 /* ms */;
@@ -465,10 +466,13 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
         >
           {this.props.showFilterBox ? (
             <SearchBox
+              componentRef={this._searchBox}
               value={this.state.filterText}
               placeholder={this.props.filterPlaceholderText || 'Search'}
               underlined
+              hideIcon
               onChange={this._onFilterChanged}
+              onKeyDown={this._onSearchKeyDown}
             />
           ) : null}
           {this.props.options.map((item: any, index: number) => onRenderItem({ ...item, index }, this._onRenderItem))}
@@ -600,9 +604,11 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
       // frame can improve perf significantly.
       this._async.requestAnimationFrame(() => {
         const selectedIndices = this.state.selectedIndices;
-        if (selectedIndices && selectedIndices[0] && !this.props.options[selectedIndices[0]].disabled) {
+        if (!this.props.showFilterBox && selectedIndices && selectedIndices[0] && !this.props.options[selectedIndices[0]].disabled) {
           const element: HTMLElement = getDocument()!.querySelector(`#${this._id}-list${selectedIndices[0]}`) as HTMLElement;
           this._focusZone.current!.focusElement(element);
+        } else if (this.props.showFilterBox) {
+          this._searchBox.current!.focus();
         } else {
           this._focusZone.current!.focus();
         }
@@ -623,7 +629,8 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
         if (!this.props.multiSelect) {
           // only close the callout when it's in single-select mode
           this.setState({
-            isOpen: false
+            isOpen: false,
+            filterText: ''
           });
         }
       }
@@ -660,7 +667,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
     const targetElement = ev.currentTarget as HTMLElement;
     this._gotMouseMove = true;
 
-    if (!this._isScrollIdle || document.activeElement === targetElement) {
+    if (!this._isScrollIdle || document.activeElement === targetElement || this.props.showFilterBox) {
       return;
     }
 
@@ -677,7 +684,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
      * Edge and IE expose a setActive() function for focusable divs that
      * sets the page focus but does not scroll the parent element.
      */
-    if (this._host.current) {
+    if (this._host.current && !this.props.showFilterBox) {
       if ((this._host.current as any).setActive) {
         try {
           (this._host.current as any).setActive();
@@ -691,11 +698,11 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
   };
 
   private _shouldIgnoreMouseEvent(): boolean {
-    return !this._isScrollIdle || !this._gotMouseMove;
+    return !this._isScrollIdle || !this._gotMouseMove || !!this.props.showFilterBox;
   }
 
   private _onDismiss = (): void => {
-    this.setState({ isOpen: false });
+    this.setState({ isOpen: false, filterText: '' });
 
     if (this._dropDown.current) {
       this._dropDown.current.focus();
@@ -805,14 +812,15 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
         }
 
         this.setState({
-          isOpen: false
+          isOpen: false,
+          filterText: ''
         });
         break;
 
       case KeyCodes.up:
         if (containsExpandCollapseModifier) {
           if (isOpen) {
-            this.setState({ isOpen: false });
+            this.setState({ isOpen: false, filterText: '' });
             break;
           }
 
@@ -888,7 +896,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
 
       default:
         if (shouldHandleKey && isOpen) {
-          this.setState({ isOpen: false });
+          this.setState({ isOpen: false, filterText: '' });
         }
         return;
     }
@@ -931,7 +939,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
     switch (ev.which) {
       case KeyCodes.up:
         if (containsExpandCollapseModifier) {
-          this.setState({ isOpen: false });
+          this.setState({ isOpen: false, filterText: '' });
         } else {
           if (this._host.current) {
             elementToFocus = getLastFocusable(this._host.current, this._host.current.lastChild as HTMLElement, true);
@@ -954,11 +962,11 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
         break;
 
       case KeyCodes.escape:
-        this.setState({ isOpen: false });
+        this.setState({ isOpen: false, filterText: '' });
         break;
 
       case KeyCodes.tab:
-        this.setState({ isOpen: false });
+        this.setState({ isOpen: false, filterText: '' });
         return;
 
       default:
@@ -977,7 +985,7 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
     const shouldHandleKey = this._shouldHandleKeyUp(ev);
 
     if (shouldHandleKey && this.state.isOpen) {
-      this.setState({ isOpen: false });
+      this.setState({ isOpen: false, filterText: '' });
       ev.preventDefault();
     }
   };
@@ -991,12 +999,49 @@ export class DropdownBase extends BaseComponent<IDropdownInternalProps, IDropdow
     }
 
     const { isOpen } = this.state;
+    const { filterText } = this.state;
     const disabled = this._isDisabled();
 
     if (!disabled) {
       this.setState({
-        isOpen: !isOpen
+        isOpen: !isOpen,
+        filterText: !isOpen ? '' : filterText
       });
+    }
+  };
+
+  /**
+   * For some reason, when the SearchBox is populated down arrow key doesn't
+   * put focus on the first filtered item. Handle that case explicitly here.
+   * The arrow up key works perfectly fine even when the SearchBox is populated.
+   */
+  private _onSearchKeyDown = (ev: React.KeyboardEvent<HTMLElement>): void => {
+    let elementToFocus;
+    const containsExpandCollapseModifier = ev.altKey || ev.metaKey;
+    switch (ev.which) {
+      case KeyCodes.down:
+        // Only do extra work here when the filter has a value.
+        if (!containsExpandCollapseModifier && this._host.current && !this._isNullOrWhiteSpace(this.state.filterText)) {
+          const ind = findIndex(this.props.options, option => {
+            return (
+              option.itemType !== DropdownMenuItemType.Header &&
+              option.itemType !== DropdownMenuItemType.Divider &&
+              option.text.toLocaleLowerCase().indexOf(this.state.filterText.toLocaleLowerCase()) > -1
+            );
+          });
+          if (ind > -1) {
+            elementToFocus = getDocument()!.querySelector(`#${this._id}-list${ind}`) as HTMLElement;
+          }
+        }
+        break;
+      default:
+        return;
+    }
+
+    if (elementToFocus) {
+      elementToFocus.focus();
+      ev.stopPropagation();
+      ev.preventDefault();
     }
   };
 

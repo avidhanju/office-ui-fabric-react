@@ -115,6 +115,8 @@ export interface ISearchBoxProps extends React.InputHTMLAttributes<HTMLInputElem
    * @defaultvalue false
    */
   disableAnimation?: boolean;
+
+  hideIcon?: boolean;
 }
 
 export interface ISearchBoxStyleProps {
